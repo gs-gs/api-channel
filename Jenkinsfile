@@ -201,7 +201,7 @@ pipeline {
                         dir('artefact/serverless') {
                             sh '''
                                 mkdir -p ${WORKSPACE}/artefact/dist/
-                                cp dist/api_channel/api_channel.zip ${WORKSPACE}/artefact/dist/lambda.zip
+                                cp dist/api_channel/channel_api.zip ${WORKSPACE}/artefact/dist/lambda.zip
                             '''
                         }
 
