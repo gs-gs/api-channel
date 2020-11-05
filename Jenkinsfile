@@ -178,7 +178,7 @@ pipeline {
                     post {
                         success {
                             dir('artefact/serverless') {
-                                archiveArtifacts artifacts: 'dist/api_channel/api_channel.zip', fingerprint: true
+                                archiveArtifacts artifacts: 'dist/api_channel/channel_api.zip', fingerprint: true
                             }
                         }
                     }
