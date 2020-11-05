@@ -28,6 +28,12 @@ pipeline {
             description: 'Run tests for all components'
         )
 
+        booleanParam(
+            name: 'force_deploy',
+            defaultValue: false,
+            description: 'Force deployment of all components'
+        )
+
     }
 
     stages {
@@ -127,7 +133,7 @@ pipeline {
         stage('Artefact') {
             when {
                 anyOf {
-                    equals expected: true, actual: params.force_apichannel
+                    equals expected: true, actual: params.force_deploy
                     branch 'master'
                 }
 
