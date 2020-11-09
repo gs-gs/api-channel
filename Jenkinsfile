@@ -16,9 +16,11 @@ pipeline {
     }
 
     environment {
-        cd_environment = 'c1'
-        slack_channel = '#igl-automatic-messages'
-        properties_file = '/var/opt/properties/devnet.properties'
+        // use credentials to define folder contextual configuration
+        deploy_stream_job = credentials('deploy_stream_job')
+        slack_channel = credentials('slack_channel')
+        properties_file = credentials('properties_file')
+        product_cmdb = credentials('product_cmdb')
     }
 
     parameters {
@@ -149,9 +151,13 @@ pipeline {
                             }
                         }
 
-                        script {
-                            def productProperties = readProperties interpolate: true, file: "${properties_file}" ;
-                            productProperties.each{ k, v -> env["${k}"] ="${v}" }
+                        dir('.hamlet/cmdb') {
+                            script {
+                                git changelog: false, credentialsId: 'github', poll: false, url: "${env["product_cmdb"]}"
+
+                                def productProperties = readProperties interpolate: true, file: "${properties_file}" ;
+                                productProperties.each{ k, v -> env["${k}"] ="${v}" }
+                            }
                         }
                     }
                 }
@@ -224,10 +230,9 @@ pipeline {
                             contextProperties.each{ k, v -> env["${k}"] ="${v}" }
                         }
 
-                        build job: "../../deploy/deploy-${env["cd_environment"]}", wait: false, parameters: [
+                        build job: "${env["deploy_stream_job"]}", wait: false, parameters: [
                                 extendedChoice(name: 'DEPLOYMENT_UNITS', value: "${env.DEPLOYMENT_UNITS}"),
                                 string(name: 'GIT_COMMIT', value: "${env.GIT_COMMIT}"),
-                                booleanParam(name: 'AUTODEPLOY', value: true),
                                 string(name: 'IMAGE_FORMATS', value: "${env.image_format}"),
                                 string(name: 'SEGMENT', value: "${env.SEGMENT}")
                         ]
@@ -286,10 +291,9 @@ pipeline {
                             contextProperties.each{ k, v -> env["${k}"] ="${v}" }
                         }
 
-                        build job: "../../deploy/deploy-${env["cd_environment"]}", wait: false, parameters: [
+                        build job: "${env["deploy_stream_job"]}", wait: false, parameters: [
                                 extendedChoice(name: 'DEPLOYMENT_UNITS', value: "${env.DEPLOYMENT_UNITS}"),
                                 string(name: 'GIT_COMMIT', value: "${env.GIT_COMMIT}"),
-                                booleanParam(name: 'AUTODEPLOY', value: true),
                                 string(name: 'IMAGE_FORMATS', value: "${env.image_format}"),
                                 string(name: 'SEGMENT', value: "${env.SEGMENT}")
                         ]
@@ -341,10 +345,9 @@ pipeline {
                             contextProperties.each{ k, v -> env["${k}"] ="${v}" }
                         }
 
-                        build job: "../../deploy/deploy-${env["cd_environment"]}", wait: false, parameters: [
+                        build job: "${env["deploy_stream_job"]}", wait: false, parameters: [
                                 extendedChoice(name: 'DEPLOYMENT_UNITS', value: "${env.DEPLOYMENT_UNITS}"),
                                 string(name: 'GIT_COMMIT', value: "${env.GIT_COMMIT}"),
-                                booleanParam(name: 'AUTODEPLOY', value: true),
                                 string(name: 'IMAGE_FORMATS', value: "${env.image_format}"),
                                 string(name: 'SEGMENT', value: "${env.SEGMENT}")
                         ]
@@ -354,7 +357,7 @@ pipeline {
                         success {
                             slackSend (
                                 message: "Build Completed - ${BUILD_DISPLAY_NAME} (<${BUILD_URL}|Open>)\n API Channel Processer Completed",
-                                channel: "#igl-automatic-messages",
+                                channel: "${env["slack_channel"]}",
                                 color: "#50C878"
                             )
                         }
@@ -362,7 +365,7 @@ pipeline {
                         failure {
                             slackSend (
                                 message: "Build Failed - ${BUILD_DISPLAY_NAME} (<${BUILD_URL}|Open>)\n API Channel Processor Failed",
-                                channel: "#igl-automatic-messages",
+                                channel: "${env["slack_channel"]}",
                                 color: "#B22222"
                             )
                         }
