@@ -21,11 +21,12 @@ pipeline {
         slack_channel = credentials('slack_channel')
         properties_file = credentials('properties_file')
         product_cmdb = credentials('product_cmdb')
+        product_cmdb_branch = credentials('product_cmdb_branch')
     }
 
     parameters {
         booleanParam(
-            name: 'all_tests',
+            name: 'run_testing',
             defaultValue: false,
             description: 'Run tests for all components'
         )
@@ -43,11 +44,7 @@ pipeline {
         stage('Testing') {
 
             when {
-                anyOf {
-                    // Disable PR Testing
-                    //changeRequest()
-                    equals expected: true, actual: params.all_tests
-                }
+                equals expected: true, actual: params.run_testing
             }
 
             environment {
@@ -137,8 +134,8 @@ pipeline {
                 anyOf {
                     equals expected: true, actual: params.force_deploy
                     branch 'master'
+                    branch 'main'
                 }
-
             }
 
             stages {
@@ -153,10 +150,16 @@ pipeline {
 
                         dir('.hamlet/cmdb') {
                             script {
-                                git changelog: false, credentialsId: 'github', poll: false, url: "${env["product_cmdb"]}"
-
+                                git changelog: false, credentialsId: 'github', poll: false, url: "${env["product_cmdb"]}", branch: "${env["product_cmdb_branch"]}"
                                 def productProperties = readProperties interpolate: true, file: "${properties_file}" ;
                                 productProperties.each{ k, v -> env["${k}"] ="${v}" }
+
+                                if( "${env["AWS_AUTOMATION_USER"]}" == "HA" ) {
+                                    withCredentials([usernamePassword(credentialsId: 'aws', usernameVariable: 'aws_access_key', passwordVariable: 'aws_secret_key')]) {
+                                        env["HA_AWS_ACCESS_KEY_ID"] = "${env["aws_access_key"]}"
+                                        env["HA_AWS_SECRET_ACCESS_KEY"] = "${env["aws_secret_key"]}"
+                                    }
+                                }
                             }
                         }
                     }
@@ -304,13 +307,9 @@ pipeline {
                 stage('push - processors') {
                     when {
                         anyOf {
-                            equals expected: true, actual: params.force_apichannel
-                            allOf {
-                                not {
-                                    equals expected: 'master', actual: "${params.branchref_apichannel}"
-                                }
-                                branch 'master'
-                            }
+                            equals expected: true, actual: params.force_deploy
+                            branch 'master'
+                            branch 'main'
                         }
                     }
 
